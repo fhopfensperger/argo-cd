@@ -660,12 +660,13 @@ func TestSkipResourceUpdate(t *testing.T) {
 
 func TestShouldHashManifest(t *testing.T) {
 	tests := []struct {
-		name        string
-		appName     string
-		gvk         schema.GroupVersionKind
-		un          *unstructured.Unstructured
-		annotations map[string]string
-		want        bool
+		name                           string
+		appName                        string
+		gvk                            schema.GroupVersionKind
+		un                             *unstructured.Unstructured
+		annotations                    map[string]string
+		ignoreUpdateUntrackedResources bool
+		want                           bool
 	}{
 		{
 			name:    "appName not empty gvk matches",
@@ -719,6 +720,24 @@ func TestShouldHashManifest(t *testing.T) {
 			annotations: map[string]string{"argocd.argoproj.io/ignore-resource-updates": "false"},
 			want:        false,
 		},
+		{
+			name:                           "argocd.argoproj.io/ignore-resource-updates=false with ignoreUpdateUntrackedResources",
+			appName:                        "",
+			gvk:                            schema.GroupVersionKind{Group: application.Group, Kind: "kind1"},
+			un:                             &unstructured.Unstructured{},
+			annotations:                    map[string]string{"argocd.argoproj.io/ignore-resource-updates": "false"},
+			ignoreUpdateUntrackedResources: true,
+			want:                           true,
+		},
+		{
+			name:                           "argocd.argoproj.io/ignore-resource-updates=invalid with ignoreUpdateUntrackedResources",
+			appName:                        "",
+			gvk:                            schema.GroupVersionKind{Group: application.Group, Kind: "kind1"},
+			un:                             &unstructured.Unstructured{},
+			annotations:                    map[string]string{"argocd.argoproj.io/ignore-resource-updates": "invalid"},
+			ignoreUpdateUntrackedResources: true,
+			want:                           true,
+		},
 	}
 
 	for _, test := range tests {
@@ -726,7 +745,7 @@ func TestShouldHashManifest(t *testing.T) {
 			if test.annotations != nil {
 				test.un.SetAnnotations(test.annotations)
 			}
-			got := shouldHashManifest(test.appName, test.gvk, test.un)
+			got := shouldHashManifest(test.appName, test.gvk, test.un, test.ignoreUpdateUntrackedResources)
 			require.Equalf(t, test.want, got, "test=%v", test.name)
 		})
 	}

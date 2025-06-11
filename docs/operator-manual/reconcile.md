@@ -128,12 +128,22 @@ data:
 
 ArgoCD will only apply `ignoreResourceUpdates` configuration to tracked resources of an application. This means dependant resources, such as a `ReplicaSet` and `Pod` created by a `Deployment`, will not ignore any updates and trigger a reconcile of the application for any changes.
 
-If you want to apply the `ignoreResourceUpdates` configuration to an untracked resource, you can add the
+If you want to apply the `ignoreResourceUpdates` configuration to an untracked resource, you have two possibilities:
+
+### Using a global setting
+
+You can enable the global setting `resource.ignoreResourceUpdatesUntrackedResourcesEnabled: 'true'` in the `argocd-cm` ConfigMap. This will apply the `ignoreResourceUpdates` configuration to untracked resources as well.
+
+!!! note
+This setting will increase the CPU usage of the `argocd-application-controller`, as it will have to build cache entries for these untracked resources. Use it with caution, especially in environments with a large number of untracked resources.
+
+### Annotation
+
 `argocd.argoproj.io/ignore-resource-updates=true` annotation in the dependent resources manifest.
 
-## Example
+#### Example
 
-### CronJob
+##### CronJob
 
 ```yaml
 apiVersion: batch/v1
@@ -164,7 +174,7 @@ spec:
           restartPolicy: OnFailure
 ```
 
-The resource updates will be ignored based on your the `ignoreResourceUpdates` configuration in the `argocd-cm` configMap:
+The resource updates will be ignored based on your `ignoreResourceUpdates` configuration in the `argocd-cm` configMap:
 
 `argocd-cm`:
 

@@ -465,6 +465,8 @@ const (
 	resourceInclusionsKey = "resource.inclusions"
 	// resourceIgnoreResourceUpdatesEnabledKey is the key to a boolean determining whether the resourceIgnoreUpdates feature is enabled
 	resourceIgnoreResourceUpdatesEnabledKey = "resource.ignoreResourceUpdatesEnabled"
+	// resourceIgnoreResourceUpdatesUntrackedResourcesEnabledKey is the key to a boolean determining whether the resourceIgnoreUpdates for untracked resources feature is enabled
+	resourceIgnoreResourceUpdatesUntrackedResourcesEnabledKey = "resource.ignoreResourceUpdatesUntrackedResourcesEnabled"
 	// resourceSensitiveAnnotationsKey is the key to list of annotations to mask in secret resource
 	resourceSensitiveAnnotationsKey = "resource.sensitive.mask.annotations"
 	// resourceCustomLabelKey is the key to a custom label to show in node info, if present
@@ -956,6 +958,19 @@ func (mgr *SettingsManager) GetIsIgnoreResourceUpdatesEnabled() (bool, error) {
 	}
 
 	return strconv.ParseBool(argoCDCM.Data[resourceIgnoreResourceUpdatesEnabledKey])
+}
+
+func (mgr *SettingsManager) GetIsIgnoreResourceUpdatesUntrackedResourcesEnabled() (bool, error) {
+	argoCDCM, err := mgr.getConfigMap()
+	if err != nil {
+		return false, fmt.Errorf("error retrieving config map: %w", err)
+	}
+
+	if argoCDCM.Data[resourceIgnoreResourceUpdatesUntrackedResourcesEnabledKey] == "" {
+		return true, nil
+	}
+
+	return strconv.ParseBool(argoCDCM.Data[resourceIgnoreResourceUpdatesUntrackedResourcesEnabledKey])
 }
 
 // GetResourceOverrides loads Resource Overrides from argocd-cm ConfigMap

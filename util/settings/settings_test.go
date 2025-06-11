@@ -284,6 +284,30 @@ func TestGetIsIgnoreResourceUpdatesEnabledFalse(t *testing.T) {
 	assert.False(t, ignoreResourceUpdatesEnabled)
 }
 
+
+func TestGetIsIgnoreResourceUpdatesUntrackedResourcesEnabled(t *testing.T) {
+	_, settingsManager := fixtures(nil)
+	ignoreResourceUpdatesUntrackedResourcesEnabled, err := settingsManager.GetIsIgnoreResourceUpdatesUntrackedResourcesEnabled()
+	require.NoError(t, err)
+	assert.True(t, ignoreResourceUpdatesUntrackedResourcesEnabled)
+
+	_, settingsManager = fixtures(map[string]string{
+		"resource.ignoreResourceUpdatesUntrackedResourcesEnabled": "true",
+	})
+	ignoreResourceUpdatesUntrackedResourcesEnabled, err = settingsManager.GetIsIgnoreResourceUpdatesUntrackedResourcesEnabled()
+	require.NoError(t, err)
+	assert.True(t, ignoreResourceUpdatesUntrackedResourcesEnabled)
+}
+
+func TestGetIsIgnoreResourceUpdatesUntrackedResourcesEnabledFalse(t *testing.T) {
+	_, settingsManager := fixtures(map[string]string{
+		"resource.ignoreResourceUpdatesUntrackedResourcesEnabled": "false",
+	})
+	ignoreResourceUpdatesUntrackedResourcesEnabled, err := settingsManager.GetIsIgnoreResourceUpdatesUntrackedResourcesEnabled()
+	require.NoError(t, err)
+	assert.False(t, ignoreResourceUpdatesUntrackedResourcesEnabled)
+}
+
 func TestGetResourceOverrides(t *testing.T) {
 	ignoreStatus := v1alpha1.ResourceOverride{IgnoreDifferences: v1alpha1.OverrideIgnoreDiff{
 		JSONPointers: []string{"/status"},

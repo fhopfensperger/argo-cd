@@ -217,6 +217,8 @@ type cacheSettings struct {
 
 	// ignoreResourceUpdates is a flag to enable resource-ignore rules.
 	ignoreResourceUpdatesEnabled bool
+	// ignoreResourceUpdatesUntrackedResource is a flog to enable resource-ignore rules for untracked resources.
+	ignoreResourceUpdatesUntrackedResourceEnabled bool
 }
 
 type liveStateCache struct {
@@ -255,6 +257,10 @@ func (c *liveStateCache) loadCacheSettings() (*cacheSettings, error) {
 	if err != nil {
 		return nil, err
 	}
+	ignoreResourceUpdatesUntrackedResourceEnabled, err := c.settingsMgr.GetIsIgnoreResourceUpdatesUntrackedResourcesEnabled()
+	if err != nil {
+		return nil, err
+	}
 	resourcesFilter, err := c.settingsMgr.GetResourcesFilter()
 	if err != nil {
 		return nil, err
@@ -268,7 +274,7 @@ func (c *liveStateCache) loadCacheSettings() (*cacheSettings, error) {
 		ResourcesFilter:        resourcesFilter,
 	}
 
-	return &cacheSettings{clusterSettings, appInstanceLabelKey, appv1.TrackingMethod(trackingMethod), installationID, resourceUpdatesOverrides, ignoreResourceUpdatesEnabled}, nil
+	return &cacheSettings{clusterSettings, appInstanceLabelKey, appv1.TrackingMethod(trackingMethod), installationID, resourceUpdatesOverrides, ignoreResourceUpdatesEnabled, ignoreResourceUpdatesUntrackedResourceEnabled}, nil
 }
 
 func asResourceNode(r *clustercache.Resource) appv1.ResourceNode {
@@ -385,13 +391,18 @@ func skipResourceUpdate(oldInfo, newInfo *ResourceInfo) bool {
 // shouldHashManifest validates if the API resource needs to be hashed.
 // If there's an app name from resource tracking, or if this is itself an app, we should generate a hash.
 // Otherwise, the hashing should be skipped to save CPU time.
-func shouldHashManifest(appName string, gvk schema.GroupVersionKind, un *unstructured.Unstructured) bool {
+func shouldHashManifest(appName string, gvk schema.GroupVersionKind, un *unstructured.Unstructured, ignoreUpdateUntrackedResource bool) bool {
 	// Only hash if the resource belongs to an app OR argocd.argoproj.io/ignore-resource-updates is present and set to true
 	// Best      - Only hash for resources that are part of an app or their dependencies
 	// (current) - Only hash for resources that are part of an app + all apps that might be from an ApplicationSet
 	// Orphan    - If orphan is enabled, hash should be made on all resource of that namespace and a config to disable it
 	// Worst     - Hash all resources watched by Argo
 	isTrackedResource := appName != "" || (gvk.Group == application.Group && gvk.Kind == application.ApplicationKind)
+
+	// If the resource is not a tracked resource and ignore updates for untracked resource is enabled, we will generate hash.
+	if !isTrackedResource && ignoreUpdateUntrackedResource {
+		return true
+	}
 
 	// If the resource is not a tracked resource, we will look up argocd.argoproj.io/ignore-resource-updates and decide
 	// whether we generate hash or not.
@@ -554,7 +565,7 @@ func (c *liveStateCache) getCluster(cluster *appv1.Cluster) (clustercache.Cluste
 
 			gvk := un.GroupVersionKind()
 
-			if cacheSettings.ignoreResourceUpdatesEnabled && shouldHashManifest(appName, gvk, un) {
+			if cacheSettings.ignoreResourceUpdatesEnabled && shouldHashManifest(appName, gvk, un, cacheSettings.ignoreResourceUpdatesUntrackedResourceEnabled) {
 				hash, err := generateManifestHash(un, nil, cacheSettings.resourceOverrides, c.ignoreNormalizerOpts)
 				if err != nil {
 					log.Errorf("Failed to generate manifest hash: %v", err)
